@@ -73,39 +73,6 @@ public class Router extends Device
 	}
 
 	/**
-	 * Helper method to caclulate checksum for IPv4 packets
-	 * @param header serialized IPv4 packet
-	 * @return checksum value
-	 */
-	private short computeChecksum(byte[] header) {
-		int length = header.length;
-		int i = 0;
-		long sum = 0;
-		
-		// Sum each consecutive 16-bit word
-		while (length > 1) {
-			int word = ((header[i] << 8) & 0xFF00) | (header[i+1] & 0xFF);
-			sum += word;
-			i += 2;
-			length -= 2;
-		}
-		
-		// Handle odd byte, if present
-		if (length > 0) {
-			int word = (header[i] << 8) & 0xFF00;
-			sum += word;
-		}
-		
-		// Add back carry outs from top 16 bits to low 16 bits
-		while ((sum >> 16) != 0) {
-			sum = (sum & 0xFFFF) + (sum >> 16);
-		}
-		
-		// One's complement and truncate to 16 bits
-		return (short) (~sum & 0xFFFF);
-	}
-
-	/**
 	 * Handle an Ethernet packet received on a specific interface.
 	 * @param etherPacket the Ethernet packet that was received
 	 * @param inIface the interface on which the packet was received
@@ -129,11 +96,13 @@ public class Router extends Device
 		IPv4 ipPacket = (IPv4) etherPacket.getPayload();
 		short checksum = ipPacket.getChecksum();
 
-		// Compute checksum
+		// Compute checksum, we can do this by serializing the packet and then deserializing it
+		// as the checksum will be recomputed during deserialization
 		ipPacket.resetChecksum();
 		byte[] serializedPacket = ipPacket.serialize();
-		short computedChecksum = computeChecksum(serializedPacket);
-
+		ipPacket = (IPv4) ipPacket.deserialize(serializedPacket, 0, serializedPacket.length);
+		short computedChecksum = ipPacket.getChecksum();
+		
 		// Drop packet if checksum is invalid
 		if (checksum != computedChecksum) {
 			System.out.println("Packet dropped: Invalid checksum");
