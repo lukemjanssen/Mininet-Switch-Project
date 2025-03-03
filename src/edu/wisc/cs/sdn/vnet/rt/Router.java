@@ -97,7 +97,7 @@ public class Router extends Device
 		short checksum = ipPacket.getChecksum();
 
 		// Compute checksum, we can do this by serializing the packet and then deserializing it
-		// as the checksum will be recomputed during deserialization
+		// as the checksum will be recomputed during serialization
 		ipPacket.resetChecksum();
 		byte[] serializedPacket = ipPacket.serialize();
 		ipPacket = (IPv4) ipPacket.deserialize(serializedPacket, 0, serializedPacket.length);
@@ -108,7 +108,6 @@ public class Router extends Device
 			System.out.println("Packet dropped: Invalid checksum");
 			return;
 		}
-		ipPacket.setChecksum(checksum);
 
 		// Decrement TTL
 		ipPacket.setTtl((byte) (ipPacket.getTtl() - 1));
@@ -116,6 +115,12 @@ public class Router extends Device
 			System.out.println("Packet dropped: TTL expired");
 			return;
 		}
+
+		// Recompute checksum as TTL has changed
+		ipPacket.resetChecksum();
+		serializedPacket = ipPacket.serialize();
+		ipPacket = (IPv4) ipPacket.deserialize(serializedPacket, 0, serializedPacket.length);
+		etherPacket.setPayload(ipPacket);
 
 		// Check if packet is destined for router
 		for (Iface iface : interfaces.values()) {
