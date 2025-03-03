@@ -27,7 +27,7 @@ public class Switch extends Device
 		super(host, logfile);
 		this.macTable = new ConcurrentHashMap<>();
 
-		// Schedule a cleanup task to remove stale MAC entries every second
+		// Cleanup every second
 		Timer cleanupTimer = new Timer(true);
 		cleanupTimer.schedule(new TimerTask() {
 			@Override
@@ -50,14 +50,10 @@ public class Switch extends Device
 		long srcMAC = etherPacket.getSourceMAC().toLong();
 		long dstMAC = etherPacket.getDestinationMAC().toLong();
 
-		// Update MAC table with source MAC address
 		macTable.put(srcMAC, new MacTableEntry(inIface));
-
-		// Lookup destination MAC address in MAC table
 		MacTableEntry entry = macTable.get(dstMAC);
 
 		if (entry != null) {
-			// Known MAC, forward to specific interface
 			sendPacket(etherPacket, entry.getIface());
 		} else {
 			// Unknown MAC, broadcast to all interfaces except incoming one
